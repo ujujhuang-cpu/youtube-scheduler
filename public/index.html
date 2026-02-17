@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube 業配分析排程系統</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --red: #e63030;
+            --red-dark: #b91c1c;
+            --red-light: #fee2e2;
+            --black: #0f0f0f;
+            --gray-1: #1a1a1a;
+            --gray-2: #2a2a2a;
+            --gray-3: #444;
+            --gray-4: #888;
+            --gray-5: #ccc;
+            --gray-6: #f4f4f4;
+            --white: #ffffff;
+            --green: #16a34a;
+            --green-light: #dcfce7;
+            --blue: #1d4ed8;
+            --blue-light: #dbeafe;
+            --shadow: 0 4px 24px rgba(0,0,0,0.10);
+            --radius: 14px;
+            --mono: 'Space Mono', monospace;
+            --sans: 'Noto Sans TC', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--sans);
+            background: #f7f5f3;
+            min-height: 100vh;
+        }
+
+        /* ── HEADER ── */
+        .site-header {
+            background: var(--black);
+            padding: 0 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 2px solid var(--red);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--mono);
+            font-size: 0.95rem;
+            color: var(--white);
+            letter-spacing: 0.04em;
+        }
+        .logo-badge {
+            background: var(--red);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+            letter-spacing: 0.08em;
+        }
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--gray-4);
+            font-family: var(--mono);
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%,100% { opacity:1; } 50% { opacity:0.4; }
+        }
+
+        /* ── LAYOUT ── */
+        .page {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2.5rem 2rem;
+        }
+        .page-title {
+            margin-bottom: 2.5rem;
+        }
+        .page-title h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--black);
+            line-height: 1.2;
+        }
+        .page-title p {
+            color: var(--gray-4);
+            margin-top: 0.4rem;
+            font-size: 0.95rem;
+        }
+
+        /* ── TABS ── */
+        .tabs {
+            display: flex;
+            gap: 0;
+            background: var(--white);
+            border-radius: 10px;
+            padding: 5px;
+            width: fit-content;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+        .tab-btn {
+            padding: 0.55rem 1.4rem;
+            border: none;
+            background: transparent;
+            font-size: 0.9rem;
+            font-family: var(--sans);
+            font-weight: 500;
+            color: var(--gray-4);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--black);
+            color: var(--white);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+        }
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--black);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .card-title .icon {
+            width: 32px; height: 32px;
+            background: var(--red-light);
+            color: var(--red);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+        }
+
+        /* ── MAIN GRID ── */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── FORM ── */
+        .form-group { margin-bottom: 1.3rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--gray-3);
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+        .form-group .required { color: var(--red); margin-left: 2px; }
+        .form-group .helper {
+            font-size: 0.78rem;
+            color: var(--gray-4);
+            margin-top: 0.35rem;
+        }
+        .form-group .helper a { color: var(--blue); text-decoration: none; }
+        .form-group .helper a:hover { text-decoration: underline; }
+
+        input[type="text"], input[type="email"], input[type="password"],
+        input[type="time"], textarea, select {
+            width: 100%;
+            padding: 0.7rem 0.9rem;
+            border: 1.5px solid var(--gray-5);
+            border-radius: 8px;
+            font-size: 0.93rem;
+            font-family: var(--sans);
+            background: var(--white);
+            color: var(--black);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(230,48,48,0.1);
+        }
+        textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+
+        /* Password toggle */
+        .input-wrap { position: relative; }
+        .input-wrap input { padding-right: 2.8rem; }
+        .eye-btn {
+            position: absolute; right: 0.75rem; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none;
+            cursor: pointer; color: var(--gray-4);
+            font-size: 1rem; padding: 0;
+            transition: color 0.2s;
+        }
+        .eye-btn:hover { color: var(--gray-3); }
+
+        /* Freq/weeks selector row */
+        .row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 0.4rem;
+            padding: 0.75rem 1.4rem;
+            border: none; border-radius: 8px;
+            font-size: 0.9rem; font-family: var(--sans); font-weight: 600;
+            cursor: pointer; transition: all 0.18s;
+            text-decoration: none;
+        }
+        .btn-full { width: 100%; }
+        .btn-primary { background: var(--red); color: white; }
+        .btn-primary:hover { background: var(--red-dark); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(230,48,48,0.25); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-success { background: var(--green); color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: var(--red-dark); }
+        .btn-outline { background: white; color: var(--black); border: 1.5px solid var(--gray-5); }
+        .btn-outline:hover { border-color: var(--black); background: var(--gray-6); }
+        .btn-ghost { background: transparent; color: var(--gray-3); padding: 0.5rem 0.75rem; }
+        .btn-ghost:hover { background: var(--gray-6); }
+        .btn-sm { padding: 0.4rem 0.85rem; font-size: 0.8rem; border-radius: 6px; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+        /* Spinner */
+        .spinner {
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.35);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .btn.loading .spinner { display: block; }
+        .btn.loading .btn-text { display: none; }
+
+        /* ── TOAST ── */
+        #toast-container {
+            position: fixed; top: 80px; right: 1.5rem;
+            z-index: 9999; display: flex; flex-direction: column; gap: 0.6rem;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            min-width: 280px; max-width: 360px;
+            padding: 0.9rem 1.1rem;
+            border-radius: 10px;
+            font-size: 0.875rem; font-weight: 500;
+            display: flex; align-items: flex-start; gap: 0.6rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn { from { opacity:0; transform: translateX(40px); } to { opacity:1; transform: translateX(0); } }
+        .toast-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .toast-error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        .toast-info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+        .toast-icon { font-size: 1rem; flex-shrink: 0; }
+        .toast-msg { flex: 1; line-height: 1.45; }
+        .toast-close { background:none; border:none; cursor:pointer; opacity:0.5; font-size:1rem; padding:0; flex-shrink:0; }
+        .toast-close:hover { opacity: 1; }
+
+        /* ── SCHEDULE LIST ── */
+        .schedule-list { display: flex; flex-direction: column; gap: 1rem; }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--gray-4);
+        }
+        .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+        .empty-state p { font-size: 0.9rem; }
+
+        .schedule-item {
+            border: 1.5px solid var(--gray-5);
+            border-radius: 10px;
+            padding: 1.1rem 1.2rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: var(--white);
+        }
+        .schedule-item:hover { border-color: var(--gray-3); box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .schedule-item.inactive { opacity: 0.7; }
+
+        .si-top {
+            display: flex; align-items: flex-start;
+            justify-content: space-between; gap: 1rem;
+            margin-bottom: 0.6rem;
+        }
+        .si-name {
+            font-weight: 700; font-size: 0.97rem;
+            color: var(--black);
+        }
+        .si-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .si-badge.active { background: var(--green-light); color: var(--green); }
+        .si-badge.paused { background: var(--gray-6); color: var(--gray-4); }
+
+        .si-meta {
+            font-size: 0.8rem; color: var(--gray-4);
+            display: flex; flex-wrap: wrap; gap: 0.75rem;
+            margin-bottom: 0.8rem;
+        }
+        .si-meta span { display: flex; align-items: center; gap: 4px; }
+
+        .si-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+        /* ── STEP INDICATOR ── */
+        .steps {
+            display: flex; align-items: center; gap: 0;
+            margin-bottom: 1.8rem;
+            counter-reset: step;
+        }
+        .step {
+            display: flex; align-items: center;
+            font-size: 0.8rem; color: var(--gray-4);
+            gap: 6px;
+        }
+        .step-num {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: var(--gray-5);
+            color: var(--gray-3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.72rem; font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step.done .step-num  { background: var(--red); color: white; }
+        .step.active .step-num { background: var(--black); color: white; }
+        .step-line {
+            flex: 1; height: 1.5px;
+            background: var(--gray-5); margin: 0 6px;
+        }
+        .step-line.done { background: var(--red); }
+
+        /* ── INFO SECTIONS ── */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.2rem;
+        }
+        .info-item { display: flex; gap: 0.8rem; align-items: flex-start; }
+        .info-icon {
+            width: 36px; height: 36px; flex-shrink: 0;
+            background: var(--red-light); color: var(--red);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+        }
+        .info-item h4 { font-size: 0.875rem; font-weight: 700; color: var(--black); margin-bottom: 0.2rem; }
+        .info-item p { font-size: 0.8rem; color: var(--gray-4); line-height: 1.5; }
+
+        /* ── DIVIDER ── */
+        .divider { height: 1px; background: var(--gray-5); margin: 1.5rem 0; }
+
+        /* ── SECTION LABEL ── */
+        .section-label {
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+            text-transform: uppercase; color: var(--gray-4);
+            margin-bottom: 0.75rem;
+        }
+
+        /* ── API TEST ── */
+        .api-test-result {
+            padding: 0.7rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .api-test-result.ok { background: var(--green-light); color: var(--green); border: 1px solid #bbf7d0; }
+        .api-test-result.fail { background: var(--red-light); color: var(--red-dark); border: 1px solid #fecaca; }
+
+        /* ── CHANNEL TAGS ── */
+        .channel-tags {
+            display: flex; flex-wrap: wrap; gap: 0.4rem;
+            margin-top: 0.5rem;
+        }
+        .ctag {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: var(--gray-6);
+            border: 1px solid var(--gray-5);
+            color: var(--gray-3);
+            padding: 0.22rem 0.6rem;
+            border-radius: 20px; font-size: 0.77rem; font-weight: 500;
+        }
+
+        /* ── LIST TOP BAR ── */
+        .list-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .list-count {
+            font-family: var(--mono); font-size: 0.8rem; color: var(--gray-4);
+        }
+
+        /* ── EMAIL TAG INPUT ── */
+        .email-tag-box {
+            min-height: 44px;
+            padding: 0.4rem 0.6rem;
+            border: 1.5px solid var(--gray-5);
+            border-radius: 8px;
+            background: var(--white);
+            cursor: text;
+            display: flex; flex-wrap: wrap; gap: 0.35rem;
+            align-items: center;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .email-tag-box:focus-within {
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(230,48,48,0.1);
+        }
+        .email-tags { display: contents; }
+        .email-tag {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: var(--gray-6);
+            border: 1px solid var(--gray-5);
+            padding: 0.18rem 0.3rem 0.18rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.8rem; color: var(--black);
+            white-space: nowrap; max-width: 220px;
+            animation: fadeIn 0.15s ease;
+        }
+        .email-tag.invalid {
+            background: var(--red-light);
+            border-color: #fca5a5;
+            color: var(--red-dark);
+        }
+        .email-tag span {
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .email-tag-del {
+            background: none; border: none; cursor: pointer;
+            color: var(--gray-4); font-size: 0.75rem; padding: 1px 3px;
+            border-radius: 50%; line-height: 1;
+            transition: color 0.15s, background 0.15s;
+            flex-shrink: 0;
+        }
+        .email-tag-del:hover { color: var(--red); background: #fecaca; }
+        .email-tag-box input[type="email"] {
+            border: none; outline: none; box-shadow: none;
+            padding: 0.2rem 0.3rem;
+            font-size: 0.875rem; font-family: var(--sans);
+            min-width: 180px; flex: 1;
+            background: transparent;
+        }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(3px);
+            z-index: 500;
+            display: flex; align-items: center; justify-content: center;
+            padding: 1.5rem;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .modal-overlay.open {
+            opacity: 1; pointer-events: auto;
+        }
+        .modal {
+            background: var(--white);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            width: 100%; max-width: 520px;
+            max-height: 85vh;
+            display: flex; flex-direction: column;
+            transform: translateY(16px) scale(0.98);
+            transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+        }
+        .modal-overlay.open .modal {
+            transform: translateY(0) scale(1);
+        }
+        .modal-header {
+            padding: 1.4rem 1.6rem 1rem;
+            border-bottom: 1px solid var(--gray-5);
+            display: flex; align-items: flex-start; justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .modal-header h3 { font-size: 1.05rem; font-weight: 700; color: var(--black); }
+        .modal-header p  { font-size: 0.8rem; color: var(--gray-4); margin-top: 0.2rem; }
+        .modal-close {
+            background: none; border: none;
+            font-size: 1.2rem; cursor: pointer;
+            color: var(--gray-4); padding: 0 0 0 1rem;
+            line-height: 1; flex-shrink: 0;
+        }
+        .modal-close:hover { color: var(--black); }
+        .modal-body {
+            padding: 1.4rem 1.6rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .modal-footer {
+            padding: 1rem 1.6rem;
+            border-top: 1px solid var(--gray-5);
+            display: flex; gap: 0.6rem; justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        /* Channel tag editor */
+        .ch-list {
+            display: flex; flex-direction: column; gap: 0.45rem;
+            margin-bottom: 1rem;
+            max-height: 300px; overflow-y: auto;
+        }
+        .ch-row {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 0.7rem;
+            background: var(--gray-6);
+            border: 1px solid var(--gray-5);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            animation: fadeIn 0.18s ease;
+        }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+        .ch-row .ch-name { flex: 1; color: var(--black); font-weight: 500; }
+        .ch-del {
+            background: none; border: none; cursor: pointer;
+            color: var(--gray-4); font-size: 0.9rem; padding: 2px 4px;
+            border-radius: 4px; transition: color 0.15s, background 0.15s;
+        }
+        .ch-del:hover { color: var(--red); background: var(--red-light); }
+
+        .ch-add-row {
+            display: flex; gap: 0.5rem; align-items: center;
+        }
+        .ch-add-row input {
+            flex: 1; padding: 0.6rem 0.8rem;
+            border: 1.5px solid var(--gray-5); border-radius: 8px;
+            font-size: 0.875rem; font-family: var(--sans);
+        }
+        .ch-add-row input:focus {
+            outline: none; border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(230,48,48,0.1);
+        }
+        .ch-count {
+            font-family: var(--mono); font-size: 0.75rem;
+            color: var(--gray-4); margin-bottom: 0.6rem;
+        }
+        .ch-empty {
+            text-align: center; color: var(--gray-4);
+            padding: 1.5rem; font-size: 0.85rem;
+        }
+
+        /* ── SKELETON ── */
+        .skeleton {
+            background: linear-gradient(90deg, var(--gray-6) 25%, #ebebeb 50%, var(--gray-6) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            border-radius: 6px;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+        .skel-item { padding: 1.1rem 1.2rem; border: 1.5px solid var(--gray-5); border-radius: 10px; }
+        .skel-line { height: 14px; margin-bottom: 8px; }
+        .skel-line.short { width: 40%; }
+        .skel-line.long { width: 75%; }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+    <div class="logo">
+        <span class="logo-badge">YT</span>
+        業配分析排程系統
+    </div>
+    <div class="header-status">
+        <span class="status-dot"></span>
+        系統運作中
+    </div>
+</header>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- MAIN -->
+<main class="page">
+    <div class="page-title">
+        <h1>📊 YouTube 業配監控中心</h1>
+        <p>自動分析頻道業配合作，定期寄送報告到信箱</p>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('create')">＋ 新增排程</button>
+        <button class="tab-btn" onclick="switchTab('list')">📋 排程管理</button>
+        <button class="tab-btn" onclick="switchTab('guide')">📚 使用說明</button>
+    </div>
+
+    <!-- TAB: CREATE -->
+    <div class="tab-content active" id="tab-create">
+        <div class="main-grid">
+            <!-- FORM -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">⚙️</span> 建立新排程
+                </div>
+
+                <div class="form-group">
+                    <label>排程名稱 <span class="required">*</span></label>
+                    <input type="text" id="scheduleName" placeholder="例如：科技頻道月報">
+                </div>
+
+                <div class="divider"></div>
+                <p class="section-label">API 設定</p>
+
+                <div class="form-group">
+                    <label>YouTube Data API 金鑰 <span class="required">*</span></label>
+                    <div class="input-wrap">
+                        <input type="password" id="apiKey" placeholder="AIza...">
+                        <button class="eye-btn" onclick="togglePassword('apiKey', this)" title="顯示/隱藏金鑰">👁️</button>
+                    </div>
+                    <p class="helper">尚未取得金鑰？前往 <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> 建立</p>
+                </div>
+                <div class="form-group">
+                    <div id="apiTestResult" class="api-test-result"></div>
+                    <button class="btn btn-outline btn-full" onclick="testApiKey()">
+                        <span class="spinner"></span>
+                        <span class="btn-text">🔍 驗證 API 金鑰</span>
+                    </button>
+                </div>
+
+                <div class="divider"></div>
+                <p class="section-label">監控設定</p>
+
+                <div class="form-group">
+                    <label>監控頻道 <span class="required">*</span></label>
+                    <textarea id="channels" placeholder="每行輸入一個頻道名稱，例如：&#10;志祺七七&#10;阿滴英文&#10;理科太太" oninput="updateChannelTags()"></textarea>
+                    <p class="helper">每行一個頻道名稱</p>
+                    <div class="channel-tags" id="channelTags"></div>
+                </div>
+
+                <div class="row-2">
+                    <div class="form-group">
+                        <label>搜尋期間</label>
+                        <select id="weeks">
+                            <option value="1">近 1 週</option>
+                            <option value="2">近 2 週</option>
+                            <option value="4" selected>近 4 週</option>
+                            <option value="8">近 8 週</option>
+                            <option value="12">近 12 週</option>
+                            <option value="26">近 26 週（半年）</option>
+                            <option value="52">近 52 週（一年）</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>報告頻率</label>
+                        <select id="frequency">
+                            <option value="daily">每日</option>
+                            <option value="weekly" selected>每週</option>
+                            <option value="monthly">每月</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>發送時間</label>
+                    <input type="time" id="sendTime" value="09:00">
+                    <p class="helper">報告將在每個排程週期的此時間寄出</p>
+                </div>
+
+                <div class="divider"></div>
+                <p class="section-label">收件設定</p>
+
+                <div class="form-group">
+                    <label>收件郵箱 <span class="required">*</span></label>
+                    <div class="email-tag-box" id="emailTagBox" onclick="document.getElementById('emailInput').focus()">
+                        <div class="email-tags" id="emailTags"></div>
+                        <input type="email" id="emailInput" placeholder="輸入信箱後按 Enter 或空格新增"
+                               onkeydown="handleEmailKey(event)"
+                               onblur="commitEmailInput()"
+                               oninput="updatePreview()">
+                    </div>
+                    <p class="helper">可新增多位收件人，報告將同時寄送給所有人</p>
+                </div>
+
+                <button class="btn btn-primary btn-full" id="createBtn" onclick="createSchedule()">
+                    <span class="spinner"></span>
+                    <span class="btn-text">🚀 建立排程</span>
+                </button>
+            </div>
+
+            <!-- SIDE INFO -->
+            <div style="display:flex; flex-direction:column; gap:1.2rem;">
+                <!-- PREVIEW CARD -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="icon">👁️</span> 排程預覽
+                    </div>
+                    <div id="previewContent" style="font-size:0.875rem; color:var(--gray-4); line-height:1.8;">
+                        填寫左側表單後，預覽將在此顯示
+                    </div>
+                </div>
+
+                <!-- TIPS -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="icon">💡</span> 小提醒
+                    </div>
+                    <ul style="font-size:0.85rem; color:var(--gray-3); line-height:1.8; padding-left:1.2rem;">
+                        <li>首次執行會在下一個排程時間寄出</li>
+                        <li>可隨時使用「立即分析」觸發即時報告</li>
+                        <li>API 金鑰每日有配額限制，請留意使用量</li>
+                        <li>報告格式為 CSV，可用 Excel 開啟</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: LIST -->
+    <div class="tab-content" id="tab-list">
+        <div class="card">
+            <div class="list-bar">
+                <div class="card-title" style="margin:0;">
+                    <span class="icon">📋</span> 我的排程
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <span class="list-count" id="scheduleCount">—</span>
+                    <button class="btn btn-outline btn-sm" onclick="loadSchedules()">↻ 重新整理</button>
+                </div>
+            </div>
+            <div id="scheduleList">
+                <!-- skeleton -->
+                <div class="schedule-list">
+                    <div class="skel-item">
+                        <div class="skeleton skel-line short"></div>
+                        <div class="skeleton skel-line long"></div>
+                    </div>
+                    <div class="skel-item" style="margin-top:1rem;">
+                        <div class="skeleton skel-line short"></div>
+                        <div class="skeleton skel-line long"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: GUIDE -->
+    <div class="tab-content" id="tab-guide">
+        <div class="card">
+            <div class="card-title">
+                <span class="icon">📚</span> 使用說明
+            </div>
+            <!-- STEPS -->
+            <div class="steps">
+                <div class="step done">
+                    <span class="step-num">1</span>
+                    <span>取得 API 金鑰</span>
+                </div>
+                <div class="step-line done"></div>
+                <div class="step active">
+                    <span class="step-num">2</span>
+                    <span>建立排程</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step">
+                    <span class="step-num">3</span>
+                    <span>等候報告</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step">
+                    <span class="step-num">4</span>
+                    <span>查看分析</span>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-icon">🔍</span>
+                    <div>
+                        <h4>自動監控</h4>
+                        <p>系統依照設定頻率，自動掃描頻道的業配影片，包含業配連結、品牌合作資訊</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">📧</span>
+                    <div>
+                        <h4>郵件報告</h4>
+                        <p>分析完成後寄送 CSV 格式報告，清單包含影片標題、發布時間、業配品牌</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">⚙️</span>
+                    <div>
+                        <h4>彈性管理</h4>
+                        <p>可隨時暫停、恢復、刪除排程，或手動觸發立即分析</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">🔒</span>
+                    <div>
+                        <h4>安全儲存</h4>
+                        <p>API 金鑰與個人資料經加密後儲存，不會明文傳輸</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">📊</span>
+                    <div>
+                        <h4>多頻道支援</h4>
+                        <p>單一排程可監控無限數量的頻道，也可隨時為現有排程新增或移除頻道</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">🕐</span>
+                    <div>
+                        <h4>自訂排程</h4>
+                        <p>每日、每週、每月三種頻率，搭配自訂發送時間，完全貼合你的工作節奏</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+            <p class="section-label">如何取得 YouTube Data API 金鑰</p>
+            <ol style="font-size:0.875rem; color:var(--gray-3); line-height:2; padding-left:1.4rem;">
+                <li>前往 <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--blue);">Google Cloud Console</a> 並登入帳號</li>
+                <li>建立新專案或選擇現有專案</li>
+                <li>前往「API 和服務」→「程式庫」，搜尋並啟用「YouTube Data API v3」</li>
+                <li>前往「API 和服務」→「憑證」，點擊「建立憑證」→「API 金鑰」</li>
+                <li>複製金鑰並貼入本系統的「API 金鑰」欄位</li>
+            </ol>
+        </div>
+    </div>
+</main>
+
+<!-- ── EDIT CHANNELS MODAL ── -->
+<div class="modal-overlay" id="editModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <h3>✏️ 編輯頻道清單</h3>
+                <p id="editModalSubtitle">排程：—</p>
+            </div>
+            <button class="modal-close" onclick="closeEditModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="ch-count" id="chCount">0 個頻道</div>
+            <div class="ch-list" id="chList">
+                <div class="ch-empty">載入中…</div>
+            </div>
+            <div class="section-label" style="margin-bottom:0.5rem;">新增頻道</div>
+            <div class="ch-add-row">
+                <input type="text" id="newChannelInput" placeholder="輸入頻道名稱" 
+                       onkeydown="if(event.key==='Enter') addChannel()">
+                <button class="btn btn-primary btn-sm" onclick="addChannel()">＋ 新增</button>
+            </div>
+            <p style="font-size:0.77rem;color:var(--gray-4);margin-top:0.4rem;">按 Enter 或點擊新增按鈕，支援無限數量頻道</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline btn-sm" onclick="closeEditModal()">取消</button>
+            <button class="btn btn-primary btn-sm" id="saveChannelsBtn" onclick="saveChannels()">
+                <span class="spinner"></span>
+                <span class="btn-text">💾 儲存變更</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ══════════════════════════════
+    //  CONFIG
+    // ══════════════════════════════
+    const API_URL = '/api';
+
+    // ══════════════════════════════
+    //  TABS
+    // ══════════════════════════════
+    function switchTab(name) {
+        document.querySelectorAll('.tab-btn').forEach((b, i) => {
+            const names = ['create','list','guide'];
+            b.classList.toggle('active', names[i] === name);
+        });
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        if (name === 'list') loadSchedules();
+    }
+
+    // ══════════════════════════════
+    //  TOAST
+    // ══════════════════════════════
+    function showToast(message, type = 'success', duration = 4500) {
+        const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.innerHTML = `
+            <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+            <span class="toast-msg">${message}</span>
+            <button class="toast-close" onclick="this.closest('.toast').remove()">✕</button>
+        `;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), duration);
+    }
+
+    // ══════════════════════════════
+    //  UTILS
+    // ══════════════════════════════
+    function togglePassword(id, btn) {
+        const el = document.getElementById(id);
+        if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+        else { el.type = 'password'; btn.textContent = '👁️'; }
+    }
+
+    function setLoading(btn, loading) {
+        btn.classList.toggle('loading', loading);
+        btn.disabled = loading;
+    }
+
+    function getFrequencyLabel(f) {
+        return { daily:'每日', weekly:'每週', monthly:'每月' }[f] || f;
+    }
+
+    function getChannels() {
+        return (document.getElementById('channels').value || '')
+            .split('\n').map(c => c.trim()).filter(Boolean);
+    }
+
+    // ══════════════════════════════
+    //  LIVE PREVIEW
+    // ══════════════════════════════
+    function updatePreview() {
+        const name      = document.getElementById('scheduleName')?.value.trim();
+        const email     = getEmails().join(', ') || document.getElementById('emailInput')?.value.trim();
+        const freq      = document.getElementById('frequency')?.value;
+        const time      = document.getElementById('sendTime')?.value;
+        const weeks     = document.getElementById('weeks')?.value;
+        const channels  = getChannels();
+
+        if (!name && !email && channels.length === 0) {
+            document.getElementById('previewContent').innerHTML =
+                '<span style="color:var(--gray-5);">填寫左側表單後，預覽將在此顯示</span>';
+            return;
+        }
+        document.getElementById('previewContent').innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:0.7rem;">
+                <div><strong style="color:var(--black);">📌 排程名稱</strong><br>${name || '<em style="color:var(--gray-4)">未填寫</em>'}</div>
+                <div><strong style="color:var(--black);">📡 監控頻道</strong><br>${channels.length > 0 ? channels.map(c=>`<span style="background:var(--gray-6);border:1px solid var(--gray-5);padding:1px 8px;border-radius:20px;font-size:0.8rem;display:inline-block;margin:2px 2px 2px 0;">${c}</span>`).join('') : '<em style="color:var(--gray-4)">未填寫</em>'}</div>
+                <div><strong style="color:var(--black);">📅 發送頻率</strong><br>${getFrequencyLabel(freq)} — ${time || '09:00'}</div>
+                <div><strong style="color:var(--black);">🗓️ 搜尋範圍</strong><br>近 ${weeks || 4} 週</div>
+                <div><strong style="color:var(--black);">📧 收件郵箱</strong><br>${email ? email.split(', ').map(e => `<span style="background:var(--gray-6);border:1px solid var(--gray-5);padding:1px 8px;border-radius:20px;font-size:0.8rem;display:inline-block;margin:2px 2px 2px 0;">${e}</span>`).join('') : '<em style="color:var(--gray-4)">未填寫</em>'}</div>
+            </div>
+        `;
+    }
+
+    // ══════════════════════════════
+    //  CHANNEL TAGS
+    // ══════════════════════════════
+    function updateChannelTags() {
+        const channels = getChannels();
+        const container = document.getElementById('channelTags');
+        if (channels.length === 0) { container.innerHTML = ''; return; }
+        container.innerHTML = channels.map(c =>
+            `<span class="ctag">🎬 ${c}</span>`
+        ).join('');
+        updatePreview();
+    }
+
+    // ══════════════════════════════
+    //  TEST API KEY
+    // ══════════════════════════════
+    async function testApiKey() {
+        const key = document.getElementById('apiKey').value.trim();
+        const resultEl = document.getElementById('apiTestResult');
+        const btn = event.currentTarget;
+
+        if (!key) { showToast('請先填入 API 金鑰', 'error'); return; }
+
+        setLoading(btn, true);
+        resultEl.style.display = 'none';
+
+        try {
+            const res = await fetch(`${API_URL}/test-key`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey: key })
+            });
+            const data = await res.json();
+            if (res.ok && data.valid) {
+                resultEl.className = 'api-test-result ok';
+                resultEl.textContent = '✅ API 金鑰驗證成功！';
+            } else {
+                resultEl.className = 'api-test-result fail';
+                resultEl.textContent = '❌ ' + (data.message || 'API 金鑰無效，請確認後再試');
+            }
+        } catch (e) {
+            resultEl.className = 'api-test-result fail';
+            resultEl.textContent = '⚠️ 無法連線至伺服器';
+        } finally {
+            resultEl.style.display = 'block';
+            setLoading(btn, false);
+        }
+    }
+
+    // ══════════════════════════════
+    //  CREATE SCHEDULE
+    // ══════════════════════════════
+    async function createSchedule() {
+        const schedule = {
+            name:      document.getElementById('scheduleName').value.trim(),
+            apiKey:    document.getElementById('apiKey').value.trim(),
+            channels:  getChannels(),
+            weeks:     parseInt(document.getElementById('weeks').value),
+            frequency: document.getElementById('frequency').value,
+            sendTime:  document.getElementById('sendTime').value,
+            emails:    getEmails()
+        };
+
+        if (!schedule.name)                    { showToast('請填寫排程名稱', 'error'); return; }
+        if (!schedule.apiKey)                  { showToast('請填寫 API 金鑰', 'error'); return; }
+        if (schedule.channels.length === 0)    { showToast('請至少輸入一個頻道', 'error'); return; }
+        if (schedule.emails.length === 0)             { showToast('請至少填寫一個收件郵箱', 'error'); return; }
+
+        const btn = document.getElementById('createBtn');
+        setLoading(btn, true);
+
+        try {
+            const res = await fetch(`${API_URL}/schedules`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(schedule)
+            });
+
+            if (res.ok) {
+                showToast('🎉 排程建立成功！首次報告將在下次排程時間寄出', 'success');
+                document.getElementById('scheduleName').value = '';
+                document.getElementById('channels').value = '';
+                document.getElementById('channelTags').innerHTML = '';
+                document.getElementById('emailTags').innerHTML = '';
+                document.getElementById('emailInput').value = '';
+                _emails = [];
+                updatePreview();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                showToast('建立失敗：' + (err.message || '未知錯誤'), 'error');
+            }
+        } catch (e) {
+            showToast('⚠️ 無法連線至伺服器，請確認後端服務是否正常', 'error');
+        } finally {
+            setLoading(btn, false);
+        }
+    }
+
+    // ══════════════════════════════
+    //  LOAD SCHEDULES
+    // ══════════════════════════════
+    async function loadSchedules() {
+        const listDiv = document.getElementById('scheduleList');
+        listDiv.innerHTML = `
+            <div class="schedule-list">
+                ${[1,2].map(() => `<div class="skel-item">
+                    <div class="skeleton skel-line short"></div>
+                    <div class="skeleton skel-line long"></div>
+                </div>`).join('')}
+            </div>`;
+        document.getElementById('scheduleCount').textContent = '—';
+
+        try {
+            const res = await fetch(`${API_URL}/schedules`);
+            const schedules = await res.json();
+
+            document.getElementById('scheduleCount').textContent = `共 ${schedules.length} 筆`;
+
+            if (schedules.length === 0) {
+                listDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>尚未建立任何排程<br>前往「新增排程」開始使用</p>
+                        <button class="btn btn-primary" style="margin-top:1rem;" onclick="switchTab('create')">建立第一個排程</button>
+                    </div>`;
+                return;
+            }
+
+            listDiv.innerHTML = `<div class="schedule-list">${
+                schedules.map(s => `
+                    <div class="schedule-item ${s.active ? '' : 'inactive'}" id="si-${s.id}">
+                        <div class="si-top">
+                            <div class="si-name">${escapeHtml(s.name)}</div>
+                            <span class="si-badge ${s.active ? 'active' : 'paused'}">
+                                ${s.active ? '● 執行中' : '⏸ 已暫停'}
+                            </span>
+                        </div>
+                        <div class="si-meta">
+                            <span>🎬 ${s.channels?.length || 0} 個頻道</span>
+                            <span>📅 ${getFrequencyLabel(s.frequency)}</span>
+                            <span>🕐 ${s.sendTime || '09:00'}</span>
+                            <span>📧 ${Array.isArray(s.emails) ? s.emails.length + ' 位收件人' : escapeHtml(s.email || s.emails || '')}</span>
+                        </div>
+                        <div class="si-actions">
+                            <button class="btn btn-primary btn-sm" onclick="runNow('${s.id}')">▶ 立即分析</button>
+                            <button class="btn btn-outline btn-sm" onclick="openEditModal('${s.id}', ${JSON.stringify(s.channels || []).replace(/"/g, '&quot;')}, '${escapeHtml(s.name)}')">✏️ 編輯頻道</button>
+                            <button class="btn ${s.active ? 'btn-outline' : 'btn-success'} btn-sm"
+                                    onclick="toggleSchedule('${s.id}', ${s.active})">
+                                ${s.active ? '⏸ 暫停' : '▶ 啟用'}
+                            </button>
+                            <button class="btn btn-ghost btn-sm" onclick="deleteSchedule('${s.id}')">🗑 刪除</button>
+                        </div>
+                    </div>
+                `).join('')
+            }</div>`;
+        } catch (e) {
+            listDiv.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <p>無法連線至伺服器<br><small style="color:var(--gray-4);">${e.message}</small></p>
+                    <button class="btn btn-outline" style="margin-top:1rem;" onclick="loadSchedules()">重試</button>
+                </div>`;
+            document.getElementById('scheduleCount').textContent = '連線失敗';
+        }
+    }
+
+    // ══════════════════════════════
+    //  RUN NOW
+    // ══════════════════════════════
+    async function runNow(id) {
+        if (!confirm('確定立即執行分析？\n系統將開始掃描並寄送 CSV 報告到信箱')) return;
+        showToast('⏳ 分析任務已啟動，請留意信箱…', 'info');
+        try {
+            const res = await fetch(`${API_URL}/schedules/${id}/run`, { method: 'POST' });
+            const data = await res.json().catch(() => ({}));
+            showToast(data.message || '✅ 任務已觸發', res.ok ? 'success' : 'error');
+        } catch (e) {
+            showToast('執行失敗：' + e.message, 'error');
+        }
+    }
+
+    // ══════════════════════════════
+    //  TOGGLE SCHEDULE
+    // ══════════════════════════════
+    async function toggleSchedule(id, current) {
+        try {
+            const res = await fetch(`${API_URL}/schedules/${id}/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active: !current })
+            });
+            if (res.ok) {
+                showToast(current ? '已暫停排程' : '排程已啟用', 'success');
+                loadSchedules();
+            } else {
+                showToast('操作失敗', 'error');
+            }
+        } catch (e) {
+            showToast('切換失敗：' + e.message, 'error');
+        }
+    }
+
+    // ══════════════════════════════
+    //  DELETE SCHEDULE
+    // ══════════════════════════════
+    async function deleteSchedule(id) {
+        if (!confirm('確定要永久刪除此排程嗎？此操作無法復原')) return;
+        try {
+            const res = await fetch(`${API_URL}/schedules/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                showToast('已刪除排程', 'success');
+                loadSchedules();
+            } else {
+                showToast('刪除失敗', 'error');
+            }
+        } catch (e) {
+            showToast('刪除失敗：' + e.message, 'error');
+        }
+    }
+
+    // ══════════════════════════════
+    //  EDIT CHANNELS MODAL
+    // ══════════════════════════════
+    let _editId = null;
+    let _editChannels = [];
+
+    function openEditModal(id, channelsJson, name) {
+        _editId = id;
+        try {
+            _editChannels = typeof channelsJson === 'string'
+                ? JSON.parse(channelsJson.replace(/&quot;/g, '"'))
+                : channelsJson;
+        } catch(e) { _editChannels = []; }
+        _editChannels = [..._editChannels];
+
+        document.getElementById('editModalSubtitle').textContent = '排程：' + name;
+        document.getElementById('newChannelInput').value = '';
+        renderChList();
+        document.getElementById('editModal').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => document.getElementById('newChannelInput').focus(), 250);
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('open');
+        document.body.style.overflow = '';
+        _editId = null;
+        _editChannels = [];
+    }
+
+    function closeModalOnOverlay(e) {
+        if (e.target === document.getElementById('editModal')) closeEditModal();
+    }
+
+    function renderChList() {
+        const list = document.getElementById('chList');
+        const count = document.getElementById('chCount');
+        count.textContent = `${_editChannels.length} 個頻道`;
+        if (_editChannels.length === 0) {
+            list.innerHTML = '<div class="ch-empty">尚無頻道，請在下方新增</div>';
+            return;
+        }
+        list.innerHTML = _editChannels.map((ch, i) => `
+            <div class="ch-row">
+                <span class="ch-name">🎬 ${escapeHtml(ch)}</span>
+                <button class="ch-del" onclick="removeChannel(${i})" title="移除">✕</button>
+            </div>
+        `).join('');
+    }
+
+    function addChannel() {
+        const input = document.getElementById('newChannelInput');
+        const val = input.value.trim();
+        if (!val) { input.focus(); return; }
+        if (_editChannels.includes(val)) {
+            showToast('此頻道已存在清單中', 'error');
+            input.select();
+            return;
+        }
+        _editChannels.push(val);
+        input.value = '';
+        input.focus();
+        renderChList();
+        const list = document.getElementById('chList');
+        list.scrollTop = list.scrollHeight;
+    }
+
+    function removeChannel(index) {
+        _editChannels.splice(index, 1);
+        renderChList();
+    }
+
+    async function saveChannels() {
+        if (!_editId) return;
+        if (_editChannels.length === 0) {
+            showToast('排程至少需要一個頻道', 'error');
+            return;
+        }
+        const btn = document.getElementById('saveChannelsBtn');
+        setLoading(btn, true);
+        try {
+            const res = await fetch(`${API_URL}/schedules/${_editId}/channels`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channels: _editChannels })
+            });
+            if (res.ok) {
+                showToast(`✅ 頻道清單已更新（共 ${_editChannels.length} 個頻道）`, 'success');
+                closeEditModal();
+                loadSchedules();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                showToast('儲存失敗：' + (err.message || '未知錯誤'), 'error');
+            }
+        } catch (e) {
+            showToast('⚠️ 無法連線至伺服器', 'error');
+        } finally {
+            setLoading(btn, false);
+        }
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeEditModal();
+    });
+
+    // ══════════════════════════════
+    //  EMAIL TAG INPUT
+    // ══════════════════════════════
+    let _emails = [];
+
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function getEmails() { return [..._emails]; }
+
+    function renderEmailTags() {
+        const container = document.getElementById('emailTags');
+        container.innerHTML = _emails.map((em, i) => `
+            <span class="email-tag ${EMAIL_RE.test(em) ? '' : 'invalid'}" title="${escapeHtml(em)}">
+                <span>${escapeHtml(em)}</span>
+                <button class="email-tag-del" onclick="removeEmail(${i})" tabindex="-1">✕</button>
+            </span>
+        `).join('');
+        updatePreview();
+    }
+
+    function handleEmailKey(e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === ',') {
+            e.preventDefault();
+            commitEmailInput();
+        } else if (e.key === 'Backspace' && e.target.value === '' && _emails.length > 0) {
+            _emails.pop();
+            renderEmailTags();
+        }
+    }
+
+    function commitEmailInput() {
+        const input = document.getElementById('emailInput');
+        const val = input.value.trim().replace(/,/g, '');
+        if (!val) return;
+        if (_emails.includes(val)) {
+            showToast('此信箱已在清單中', 'error');
+            input.value = '';
+            return;
+        }
+        if (!EMAIL_RE.test(val)) {
+            showToast('「' + val + '」格式不正確', 'error');
+            return;
+        }
+        _emails.push(val);
+        input.value = '';
+        renderEmailTags();
+    }
+
+    function removeEmail(index) {
+        _emails.splice(index, 1);
+        renderEmailTags();
+    }
+
+    // ══════════════════════════════
+    //  HELPERS
+    // ══════════════════════════════
+    function escapeHtml(str) {
+        return (str || '').replace(/[&<>"']/g, c =>
+            ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // ══════════════════════════════
+    //  LIVE PREVIEW BINDINGS
+    // ══════════════════════════════
+    ['scheduleName','apiKey','weeks','frequency','sendTime'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updatePreview);
+    });
+
+    // Init
+    window.addEventListener('load', () => {
+        updatePreview();
+        // 預先載入排程數量顯示在 tab 上不需特別處理
+    });
+</script>
+</body>
+</html>
